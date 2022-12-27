@@ -19,8 +19,8 @@ I saved the final built versions via `pip list > final_env.txt`, which is also u
 I have saved the final files I used in the competition as CSV files in the `./data` folder. These include:
 
  - `elevation_dem.csv`, data obtained from Planetary computers DEM source, see `get_dem.py`
- - ???????
- - ???????
+ - ??????? image data ??????????
+ - ??????? weather data ????????
 
 Note that for each of these scripts, they involved downloading (and caching) the data in a local sqllite database. On my personal machine they could take a very long time, and if your internet goes out could result in errors. The scripts are written so you can just "rerun" them again, and it will attempt to fill in the missing information and add in more data. E.g., if you are in the root of the project, you can run:
 

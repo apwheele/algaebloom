@@ -7,17 +7,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder, MinMaxScaler
 import numpy as np
 import pandas as pd
-#import optuna
 import pickle
-
-import matplotlib
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 from xgboost import XGBRegressor
-from catboost import CatBoostClassifier
-#from sklearn.ensemble import RandomForestClassifier
+from catboost import CatBoostClassifier, CatBoostRegressor
+from lightgbm import LGBMRegressor, Dataset
+from sklearn.ensemble import RandomForestRegressor
 #from sklearn.linear_model import ElasticNet
+
+# Setting the global seed
+np.random.seed(10)
 
 # Just easier function to reset indices
 def split(data,test_size=1200,random_state=10):
@@ -88,6 +86,8 @@ class DateEnc():
         self.dummy = dummy
         # 'days','weekday','month','year'
         self.dum_types = dum_types
+        self.cat_vars = []
+        # Setting categorical variables
     def fit(self,X):
         # These are just fixed functions
         pass
@@ -95,21 +95,26 @@ class DateEnc():
         vars = list(X)
         res = []
         res_labs = []
+        cat_labs = []
         if self.dummy:
             for v in vars:
                 dd, week_day, month, year = dummy_stats(X[v],self.begin)
                 if 'days' in self.dum_types:
-                    res.append(dd)
+                    res.append(dd) # this is not likely to be categorical
                     res_labs.append(f'days_{v}')
                 if 'weekday' in self.dum_types:
                     res.append(week_day)
                     res_labs.append(f'weekday_{v}')
+                    cat_labs.append(f'weekday_{v}')
                 if 'month' in self.dum_types:
                     res.append(month)
                     res_labs.append(f'month_{v}')
+                    cat_labs.append(f'weekday_{v}')
                 if 'year' in self.dum_types:
                     res.append(year)
                     res_labs.append(f'year_{v}')
+                    cat_labs.append(f'year_{v}')
+            self.cat_vars = cat_labs
         else:
              for v in vars:
                 dd, year_cos, year_sin, week_cos, week_sin = circle_stats(X[v],self.begin)
@@ -254,6 +259,15 @@ class FeatureEngine():
             self.scale.fit(res_df)
             res_df = pd.DataFrame(self.scale.transform(res_df),columns=list(res_df))
         self.fin_vars = list(res_df)
+        # Adding categorical variables back in
+        cat_vars = []
+        if self.dum_vars is not None:
+            cat_vars += self.dum.var_names
+        if self.dat_vars is not None:
+            cat_vars += self.dat.cat_vars
+        if self.ord_vars is not None:
+            cat_vars += self.ord_vars
+        self.cat_vars = cat_vars
         return res_df
     def transform(self, X):
         res = []
@@ -285,7 +299,8 @@ class RegMod():
                         y = None,
                 transform = None,
                 inv_trans = None,
-                  scale_x = MinMaxScaler(),
+                   weight = None,
+                  scale_x = None,
                       mod = XGBRegressor(n_estimators=100, max_depth=3)):
         self.fe = FeatureEngine(ord_vars=ord_vars,
                            dat_vars=dat_vars,
@@ -298,16 +313,42 @@ class RegMod():
         self.y = y
         self.resids = None
         self.cat_vars = None
-    def fit(self, X, sample_weight=None):
+        self.weight = weight
+        self.metrics = None
+        self.fit_cat = False
+    def fit(self, X, weight=True, cat=True):
+        if (self.weight is not None) & weight:
+            sw = X[self.weight]
+        else:
+            sw = None
         y_dat = X[self.y].copy()
         if self.transform:
             y_dat = self.transform(y_dat)
         X_dat = self.fe.fit(X)
-        self.mod.fit(X_dat,y_dat,sample_weight=sample_weight)
+        self.cat_vars = self.fe.cat_vars
+        # If catboost or lightgbm, pass in categories
+        if (type(self.mod) == CatBoostRegressor) & cat:
+            vt = list(X_dat)
+            if self.cat_vars is not None:
+                ci = [vt.index(c) for c in self.cat_vars]
+            else:
+                ci = None
+            self.mod.fit(X_dat,y_dat,sample_weight=sw,cat_features=ci)
+            self.fit_cat = True
+        elif (type(self.mod) == LGBMRegressor) & cat:
+            self.fit_cat = True
+            for v in self.cat_vars:
+                X_dat[v] = X_dat[v].astype('category')
+            self.mod.fit(X_dat, y_dat)
+        else:
+            self.mod.fit(X_dat,y_dat,sample_weight=sw)
         pred = self.mod.predict(X_dat)
         self.resids = pd.Series(y_dat - pred)
     def predict(self,X,duan=True):
         X_dat = self.fe.transform(X)
+        if self.fit_cat & (type(self.mod) == LGBMRegressor):
+            for v in self.cat_vars:
+                X_dat[v] = X_dat[v].astype('category')
         pred = pd.Series(self.mod.predict(X_dat), X.index)
         resids = self.resids
         # if transform, do Duans smearing
@@ -330,7 +371,37 @@ class RegMod():
         # Normalize to sum to 1
         res_df['FI'] = res_df['FI']/res_df['FI'].sum()
         return res_df
-
+    def met_eval(self, data, weight=True, cat=True, full_train=False,
+                 split='weighted', test_size=2000, test_splits=10, 
+                 ret=False, pr=False):
+        dc = data.copy()
+        seeds = np.random.randint(1,1e6,test_splits)
+        metrics = []
+        for s in seeds:
+            if split == 'weighted':
+                if self.weight is not None:
+                    wv = self.weight
+                else:
+                    wv = 'pred_split'
+                train, test = split_weight(dc,test_size,wv,s)
+            else:
+                train, test = split(dc,test_size,s)
+            self.fit(train, weight, cat)
+            test['pred'] = self.predict_int(test)
+            met_di = rmse_region(test,ret=True)
+            met_di['seed'] = s
+            metrics.append(met_di.copy())
+        mpd = pd.DataFrame(metrics)
+        if full_train:
+            self.fit(data)
+        if self.metrics is None:
+            self.metrics = mpd
+        else:
+            self.metrics = pd.concat([self.metrics,mpd],axis=0)
+        if pr:
+            print(mpd[['AvgError','midwest','northeast','south','west']].describe().T)
+        if ret:
+            return mpd['AvgError'].mean()
 
 class CatMod():
     def __init__(self,
@@ -341,7 +412,7 @@ class CatMod():
                         y = None,
                 transform = None,
                 inv_trans = None,
-                  scale_x = MinMaxScaler(),
+                  scale_x = None,
                       mod = CatBoostClassifier(iterations=100,depth=5,allow_writing_files=False,verbose=False)
                       ):
         self.fe = FeatureEngine(ord_vars=ord_vars,
@@ -375,7 +446,6 @@ class CatMod():
         # Normalize to sum to 1
         res_df['FI'] = res_df['FI']/res_df['FI'].sum()
         return res_df
-
 
 # If you pass in multiple models
 # this will ensemble them, presumes regressor models
@@ -436,72 +506,3 @@ def load_model(name):
     mod = pickle.load(infile)
     infile.close()
     return mod
-
-
-andy_theme = {'axes.grid': True,
-              'grid.linestyle': '--',
-              'legend.framealpha': 1,
-              'legend.facecolor': 'white',
-              'legend.shadow': True,
-              'legend.fontsize': 14,
-              'legend.title_fontsize': 16,
-              'xtick.labelsize': 14,
-              'ytick.labelsize': 14,
-              'axes.labelsize': 16,
-              'axes.titlesize': 20,
-              'figure.dpi': 100}
- 
-#print( matplotlib.rcParams )
-matplotlib.rcParams.update(andy_theme)
-
-#Calibration Chart
-def cal_data(prob, true, data, bins, plot=False, figsize=(6,4), save_plot=False):
-    cal_dat = data[[prob,true]].copy()
-    cal_dat['Count'] = 1
-    cal_dat['Bin'] = pd.qcut(cal_dat[prob], bins, range(bins) ).astype(int) + 1
-    agg_bins = cal_dat.groupby('Bin', as_index=False)['Count',prob,true].sum()
-    agg_bins['Predicted'] = agg_bins[prob]/agg_bins['Count']
-    agg_bins['Actual'] = agg_bins[true]/agg_bins['Count']
-    if plot:
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.plot(agg_bins['Bin'], agg_bins['Predicted'], marker='+', label='Predicted')
-        ax.plot(agg_bins['Bin'], agg_bins['Actual'], marker='o', markeredgecolor='w', label='Actual')
-        ax.set_ylabel('Outcome')
-        ax.legend(loc='upper left')
-        ax.set_xlim([0,bins+1])
-        plt.xticks(None)
-        plt.tick_params(length=0)
-        if save_plot:
-            plt.savefig(save_plot, dpi=500, bbox_inches='tight')
-        plt.show()
-    return agg_bins
-
-# Calibration chart by groups (long format, seaborn small multiple)
-def cal_data_group(prob, true, group, data, bins, plot=False, wrap_col=3, sns_height=4, save_plot=False):
-    cal_dat = data[[prob,true,group]].copy()
-    cal_dat['Count'] = 1
-    cal_dat['Bin'] = (cal_dat.groupby(group,as_index=False)[prob]
-                        ).transform( lambda x: pd.qcut(x, bins, labels=range(bins))
-                        ).astype(int) + 1
-    agg_bins = cal_dat.groupby([group,'Bin'], as_index=False)['Count',prob,true].sum()
-    agg_bins['Predicted'] = agg_bins[prob]/agg_bins['Count']
-    agg_bins['Actual'] = agg_bins[true]/agg_bins['Count']
-    agg_long = pd.melt(agg_bins, id_vars=['Bin',group], value_vars=['Predicted','Actual'], 
-                       var_name='Type', value_name='Probability')
-    if plot:
-        d = {'marker': ['o','X']}
-        ax = sns.FacetGrid(data=agg_long, col=group, hue='Type', hue_kws=d,
-                           col_wrap=wrap_col, despine=False, height=sns_height)
-        ax.map(plt.plot, 'Bin', 'Outcome', markeredgecolor="w")
-        ax.set_titles("{col_name}")
-        ax.set_xlabels("")
-        ax.set_xticklabels("")
-        ax.axes[0].legend(loc='upper left')
-        # Setting xlim in FacetGrid not behaving how I want
-        for a in ax.axes:
-            a.set_xlim([0,bins+1])
-            a.tick_params(length=0)
-        if save_plot:
-            plt.savefig(save_plot, dpi=500, bbox_inches='tight')
-        plt.show()
-    return agg_bins

@@ -22,11 +22,6 @@ def today_str():
 #dum_vars = ['FCODE','region']
 #dat_vars = ['date']
 
-# Modifies FCODE string in place
-def mod_fcode(data,fstr='FCODE'):
-    data[fstr] = data['FCODE'].astype(str).str[0:2]
-    data[fstr] = data[fstr].replace({'37':'-1'})
-
 # ordinal encoding for region
 def org_reg(data,rstr='region'):
     data[rstr] = data[rstr].replace({'west':4,
@@ -94,23 +89,10 @@ SELECT
   e.dife,
   e.avge,
   e.stde,
-  we.tavg,
-  we.tmin,
-  we.tmax,
-  we.prcp,
-  we.wpsd,
-  we.pres,
-  we.tsun,
-  wa.FCODE,
-  wa.SQKM,
   sl.meanlogDensity300
 FROM meta AS m
 LEFT JOIN elevation_dem AS e
   ON m.uid = e.uid
-LEFT JOIN weather AS we
-  ON m.uid = we.uid
-LEFT JOIN water AS wa
-  ON m.uid = wa.uid
 LEFT JOIN spat_lag300 AS sl
   ON m.uid = sl.uid
 LEFT JOIN labels AS l
@@ -136,23 +118,10 @@ SELECT
   e.dife,
   e.avge,
   e.stde,
-  we.tavg,
-  we.tmin,
-  we.tmax,
-  we.prcp,
-  we.wpsd,
-  we.pres,
-  we.tsun,
-  wa.FCODE,
-  wa.SQKM,
   sl.meanlogDensity300
 FROM meta AS m
 LEFT JOIN elevation_dem AS e
   ON m.uid = e.uid
-LEFT JOIN weather AS we
-  ON m.uid = we.uid
-LEFT JOIN water AS wa
-  ON m.uid = wa.uid
 LEFT JOIN spat_lag300 AS sl
   ON m.uid = sl.uid
 LEFT JOIN format AS l
@@ -184,9 +153,7 @@ def get_data(data_type='train',db_str=db,split_pred=False):
     elif data_type == 'test':
         sql = test_query
     dat = pd.read_sql(sql,con=db_con)
-    mod_fcode(dat) # FCODE recode
     org_reg(dat) # Region ordinal encode
-    dat['sqrtSQKM'] = safesqrt(dat['SQKM'])
     dat['cluster'] = dat[['latitude','longitude']].apply(cluster,axis=1)
     if data_type == 'train':
         dat['logDensity'] = safelog(dat['density'])

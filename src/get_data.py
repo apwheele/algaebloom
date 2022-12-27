@@ -167,28 +167,37 @@ def vector_vincent(x, lat2, lon2):
 
 # Average outcome in data from sites within d kilometers (default 300)
 # Limit to only those before outcome
-def spatial_lag(pred_data,data,distance=300,field='logDensity',lat='latitude',lon='longitude',date='date'):
+def spatial_lag(pred_data,data,distance=[100,300,1000],fields=['severity','logDensity'],lat='latitude',lon='longitude',date='date'):
     res = [] # final list with info
     # prepping data to check
-    dc = data[[field,lat,lon,date]].copy()
+    dc = data[fields + [lat,lon,date]].copy()
     dc[date] = pd.to_datetime(dc[date])
     # now prepping pred_data
     plon_li = pred_data[lon].tolist()
     plat_li = pred_data[lat].tolist()
     pdat_li = pd.to_datetime(pred_data[date]).tolist()
     for plon,plat,pdat in zip(plon_li,plat_li,pdat_li):
+        loc_dat = []
         sub_dc = dc[dc[date] < pdat].copy()
         km_dist = sub_dc[[lat,lon]].apply(vector_vincent,args=(plat,plon),axis=1)
-        sub_dist = sub_dc[km_dist < distance].copy()
-        if sub_dist.shape[0] > 0:
-            res.append(sub_dist[field].mean())
-        else:
-            res.append(-1)
-    res_pd = pd.Series(res,index=pred_data.index)
+        for d in distance:
+            sub_dist = sub_dc[km_dist < d].copy()
+            if sub_dist.shape[0] > 0:
+                for v in fields:
+                    loc_dat.append(sub_dist[v].mean())
+            else:
+                loc_dat = [-1 for v in fields]
+        res.append(loc_dat.copy())
+    res_labs = []
+    for d in distance:
+        for v in fields:
+            res_labs.append(f'{v}_{str(d)}')
+    res_pd = pd.DataFrame(res,columns=res_labs,index=pred_data.index)
+    res_pd['
     return res_pd
 
 
-def get_spatiallag(distance=300,field='logDensity',con=db_con,table_name='spat_lag300'):
+def get_spatiallag(con=db_con,table_name='spat_lag'):
     # get full metadata table
     full_dat = pd.read_csv('./data/metadata.csv')
     # get metadata with only labels
@@ -196,12 +205,10 @@ def get_spatiallag(distance=300,field='logDensity',con=db_con,table_name='spat_l
     only_lab = labs.merge(full_dat,on='uid')
     only_lab['logDensity'] = np.log(only_lab['density'].clip(1))
     # create spatial lag
-    field_name = f'mean{field}{str(distance)}'
-    full_dat[field_name] = spatial_lag(full_dat,only_lab,distance,field)
-    full_dat['distance'] = distance
+    lag_df = spatial_lag(full_dat,only_lab)
+    lag_df['uid'] = full_dat['uid']
     # save to a new table
-    keep_fields = ['uid',field_name,'distance']
-    full_dat[keep_fields].to_sql(table_name,con)
+    add_table(lag_df,table_name)
     return full_dat
 
 
