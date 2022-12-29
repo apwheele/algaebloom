@@ -16,11 +16,23 @@ import rioxarray
 import planetary_computer as pc
 import geopy.distance as distance
 import odc
-import cv2
+#import cv2
 
 
 db = './data/data.sqlite'
 db_con = sqlite3.connect(db)
+
+# having a hard time installing opencv on
+# planetary computer, only use this function
+# so far
+
+def cv2_norm(matrix):
+    amin = matrix.min()
+    amax = matrix.max()
+    modif = max/(amax - amin)
+    shift_mat = np.round((matrix - amin)*modif)
+    return shift_mat.astype(int)
+
 
 # chunking pandas dataframe
 def chunk_pd(df, chunk_size):
@@ -286,7 +298,8 @@ def crop_landsat_image(item, bounding_box):
     image_array = image[["red", "green", "blue"]].to_array().to_numpy()
 
     # normalize to 0 - 255 values
-    image_array = cv2.normalize(image_array, None, 0, 255, cv2.NORM_MINMAX)
+    #image_array = cv2.normalize(image_array, None, 0, 255, cv2.NORM_MINMAX)
+    image_array = cv2_norm(image_array)
 
     return image_array
 
