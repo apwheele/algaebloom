@@ -13,8 +13,11 @@ import os
 from datetime import datetime, timedelta
 from math import sin, cos, tan, acos, atan, atan2, radians, sqrt, pi
 import rioxarray
-import pystac_client
+import planetary_computer as pc
 import geopy.distance as distance
+import odc
+import cv2
+
 
 db = './data/data.sqlite'
 db_con = sqlite3.connect(db)
@@ -178,23 +181,22 @@ def spatial_lag(pred_data,data,distance=[100,300,1000],fields=['severity','logDe
     pdat_li = pd.to_datetime(pred_data[date]).tolist()
     for plon,plat,pdat in zip(plon_li,plat_li,pdat_li):
         loc_dat = []
+        count_dat = []
         sub_dc = dc[dc[date] < pdat].copy()
         km_dist = sub_dc[[lat,lon]].apply(vector_vincent,args=(plat,plon),axis=1)
         for d in distance:
             sub_dist = sub_dc[km_dist < d].copy()
-            if sub_dist.shape[0] > 0:
-                for v in fields:
-                    loc_dat.append(sub_dist[v].mean())
-            else:
-                loc_dat = [-1 for v in fields]
-        res.append(loc_dat.copy())
+            count_dat.append(sub_dist.shape[0])
+            for v in fields:
+                loc_dat.append(sub_dist[v].mean())
+        res.append(loc_dat + count_dat)
     res_labs = []
     for d in distance:
         for v in fields:
             res_labs.append(f'{v}_{str(d)}')
+    res_labs += [f'count_{str(d)}' for d in distance]
     res_pd = pd.DataFrame(res,columns=res_labs,index=pred_data.index)
-    res_pd['
-    return res_pd
+    return res_pd.fillna(-1)
 
 
 def get_spatiallag(con=db_con,table_name='spat_lag'):
@@ -209,11 +211,14 @@ def get_spatiallag(con=db_con,table_name='spat_lag'):
     lag_df['uid'] = full_dat['uid']
     # save to a new table
     add_table(lag_df,table_name)
-    return full_dat
+    return lag_df
 
 
+#########################################################################
 # helper functions from DataDriven post
 # https://drivendata.co/blog/tick-tick-bloom-benchmark
+
+
 def get_bounding_box(latitude, longitude, meter_buffer=1000):
     """
     Given a latitude, longitude, and buffer in meters, returns a bounding
@@ -243,3 +248,46 @@ def get_date_range(date, time_buffer_days=15):
     date_range = f"{range_start.strftime(datetime_format)}/{pd.to_datetime(date).strftime(datetime_format)}"
     return date_range
 
+
+def crop_sentinel_image(item, bounding_box):
+    """
+    Given a STAC item from Sentinel-2 and a bounding box tuple in the format
+    (minx, miny, maxx, maxy), return a cropped portion of the item's visual
+    imagery in the bounding box.
+
+    Returns the image as a numpy array with dimensions (color band, height, width)
+    """
+    (minx, miny, maxx, maxy) = bounding_box
+
+    image = rioxarray.open_rasterio(pc.sign(item.assets["visual"].href)).rio.clip_box(
+        minx=minx,
+        miny=miny,
+        maxx=maxx,
+        maxy=maxy,
+        crs="EPSG:4326",
+    )
+    # Should I return X/Y as well?
+    return image.to_numpy()
+
+
+def crop_landsat_image(item, bounding_box):
+    """
+    Given a STAC item from Landsat and a bounding box tuple in the format
+    (minx, miny, maxx, maxy), return a cropped portion of the item's visual
+    imagery in the bounding box.
+
+    Returns the image as a numpy array with dimensions (color band, height, width)
+    """
+    (minx, miny, maxx, maxy) = bounding_box
+
+    image = odc.stac.stac_load(
+        [pc.sign(item)], bands=["red", "green", "blue"], bbox=[minx, miny, maxx, maxy]
+    ).isel(time=0)
+    image_array = image[["red", "green", "blue"]].to_array().to_numpy()
+
+    # normalize to 0 - 255 values
+    image_array = cv2.normalize(image_array, None, 0, 255, cv2.NORM_MINMAX)
+
+    return image_array
+
+#########################################################################

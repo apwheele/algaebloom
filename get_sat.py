@@ -1,3 +1,11 @@
+'''
+Getting satellite imagery
+'''
+
+from src import get_data
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.cluster import KMeans
 
 
 from datetime import datetime, timedelta
@@ -11,35 +19,25 @@ from pystac_client import Client
 import geopy.distance as distance
 
 import rioxarray
-#from IPython.display import Image
 from PIL import Image as PILImage
 
 catalog = Client.open(
     "https://planetarycomputer.microsoft.com/api/stac/v1", modifier=pc.sign_inplace
 )
 
-# get our date range to search, and format correctly for query
-def get_date_range(date, time_buffer_days=15):
-    """Get a date range to search for in the planetary computer based
-    on a sample's date. The time range will include the sample date
-    and time_buffer_days days prior
-
-    Returns a string"""
-    datetime_format = "%Y-%m-%dT"
-    range_start = pd.to_datetime(date) - timedelta(days=time_buffer_days)
-    date_range = f"{range_start.strftime(datetime_format)}/{pd.to_datetime(date).strftime(datetime_format)}"
-    return date_range
 
 # "sentinel-2-l2a", "landsat-c2-l2"
 
 # Function to search for imagery data
-def cat_search(bbox,date,time_buffer_days=10,collections=["sentinel-2-l2a"]):
-    dr = get_date_range(date,time_buffer_days)
-    # limits cloud cover to images less than 10%
+# change to search for lat/lon, then query out items inside of bbox
+def cat_search(lat,lon,date,time_buffer_days=30,collections=["sentinel-2-l2a","landsat-c2-l2"],meter_buffer=1000):
+    dr = get_data.get_date_range(date,time_buffer_days)
+    bbox = get_data.get_bounding_box(lat,lon,meter_buffer=meter_buffer)
+    # limits cloud cover to images less than 5%
     search = catalog.search(collections=collections,
                             bbox=bbox,
                             datetime=dr,
-                            query={"eo:cloud_cover": {"lt": 10}})
+                            query={"eo:cloud_cover": {"lt": 5}})
     items = [item for item in search.get_all_items()]
     item_details = pd.DataFrame(
     [{
@@ -55,57 +53,113 @@ def cat_search(bbox,date,time_buffer_days=10,collections=["sentinel-2-l2a"]):
         for item in items
     ])
     item_details.sort_values(by='datetime',inplace=True,ascending=False)
-    return items, item_details
+    item_details['lat'] = lat
+    item_details['lon'] = lon
+    return item_details
+
+
+# If Sentinel available, use that, if not use LandSat
+
+# get_data.crop_sentinel_image
+# get_data.crop_landsat_image
+
+def get_image(data, meter_buffer=1000):
+    sent = data['platform'] == 'Sentinel-2A'
+    lat = data['lat'][0]
+    lon = data['lon'][0]
+    bbox = get_data.get_bounding_box(lat,lon,meter_buffer=meter_buffer)
+    # If sentinel available, use that
+    if sent.sum() > 0:
+        #print('Grabbing Sentinel image')
+        sd = data[sent]
+        item = sd['item_obj'].tolist()[0]
+        cf = get_data.crop_sentinel_image(item,bbox)
+        im_type = 'sentinel'
+    else:
+        #print('Grabbing LandSat image')
+        sd = data[data['platform'] == 'landsat-7']
+        item = sd['item_obj'].tolist()[0]
+        cf = get_data.crop_landsat_image(item,bbox)
+        im_type = 'land_sat'
+    return cf, im_type
+
+
+def k_mean_image(image_np,k=2, seed=10):
+    red = image_np[0].flatten()
+    green = image_np[1].flatten()
+    blue = image_np[2].flatten()
+    im_df = pd.DataFrame(zip(red,green,blue),columns=['r','g','b'])
+    # eliminate black bands in image
+    black = im_df.sum(axis=1)
+    im_df = im_df[black > 0].reset_index(drop=True)
+    # k-means cluster
+    kmeans = KMeans(n_clusters=k, random_state=seed, n_init="auto")
+    kmeans.fit(im_df)
+    # figure out cluster that is the most blue
+    lab_blue = np.argmax(kmeans.cluster_centers_[:,2])
+    lake = kmeans.labels_ == lab_blue
+    # calculate proportion of image
+    prop_lake = lake.mean()
+    # calculate red/green/blue average inside that
+    lake_im = im_df[lake].copy()
+    red_lake = lake_im['r'].mean()
+    green_lake = lake_im['g'].mean()
+    blue_lake = lake_im['b'].mean()
+    dat = {'prop_lake': prop_lake,
+           'r': red_lake,
+           'g': green_lake,
+           'b': blue_lake}
+    return dat
+
+
+def get_image_data_ll(lat,lon,date,meter_buffer=[500,1000,2500]):
+    # Get the images
+    res_df = cat_search(lat,lon,date)
+    res_di = {}
+    for m in meter_buffer:
+        # This could be made more efficient
+        # only grab image once, then do multiple crops
+        ri, im_type = get_image(res_df, meter_buffer=m)
+        res_di['imtype'] = im_type
+        ri_dat = k_mean_image(ri)
+        for d in ri_dat.keys():
+            nk = f'{d}_{str(m)}'
+            res_di[nk] = ri_dat[d]
+    return res_di
+
+
+def loop_image_data(data,con=get_data.db_con,table_name='sat'):
+    # if table exists, check to make sure data is not already included
+    if get_data.tab_exists(table_name,con):
+        dc = get_data.get_update(data,table_name)
+        print(f'Updating {dc.shape[0]} records in {table_name}')
+    else:
+        dc = data.copy()
+        print(f'Making {dc.shape[0]} new records in {table_name}')
+    uidl = dc['uid'].tolist()
+    latl = dc['latitude'].tolist()
+    lonl = dc['longitude'].tolist()
+    datl = pd.to_datetime(dc['date']).tolist()
+    it = 0
+    for uid,lat,lon,dat in zip(uidl,latl,lonl,datl):
+        it += 1
+        print(f'Grabbing image {it} out of {dc.shape[0]} @ {datetime.now()}')
+        try:
+            res_im = get_image_data_ll(lat,lon,dat)
+            res_df = pd.DataFrame([res_im])
+            res_df['uid'] = uid
+            get_data.add_table(res_df,table_name,con)
+        except Exception:
+            print(f'Unable to query image data for UID: {uid}')
+    res = pd.read_sql(f'SELECT * FROM {table_name}',con)
+    return res
+
+#get_data.drop_table('sat')
+
+meta = pd.read_csv('./data/metadata.csv')
+res_df = loop_image_data(meta)
+print(res_df.shape)
+res_df.to_csv('./data/sat_stats.csv')
 
 
 
-bbox = [-111.26063646639783,
- 41.52988747516146,
- -110.05404353360218,
- 42.43019710235757]
-
-date = '2021-09-27'
-
-res, res_df = cat_search(bbox,date)
-
-ls_res, ls_df = cat_search(bbox,date,collections=["landsat-c2-l2"])
-
-
-# Get most recent image + image 6 months prior
-# green current, veg current, ?blue current?
-# green old, veg old
-# dif green/veg 
-# Maybe new meta-data2vec reduction
-def get_image():
-    # This will need to cache the image files somewhere
-    return None
-
-# https://planetarycomputer.microsoft.com/catalog
-
-
-# DEM data
-# https://planetarycomputer.microsoft.com/dataset/cop-dem-glo-30#Example-Notebook
-
-
-
-# Weather https://planetarycomputer.microsoft.com/dataset/daymet-daily-na
-
-# Vegitation https://planetarycomputer.microsoft.com/dataset/modis-13Q1-061#Example-Notebook [2000 to present]
-#def get_veg(bbox,date):
-#    dr = get_date_range(date,15)
-#    search = catalog.search(
-#        collections=["modis-13Q1-061"],
-#        bbox=bbox,
-#        datetime=dr,
-#    )
-#    items = [item for item in search.get_all_items()]
-#    return items
-#
-#res_veg = get_veg(bbox,date)
-#
-#data = odc.stac.load(
-#    res_veg,
-#    bands="250m_16_days_EVI",
-#    resolution=250,
-#    bbox=bbox,
-#)

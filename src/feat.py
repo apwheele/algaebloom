@@ -89,11 +89,19 @@ SELECT
   e.dife,
   e.avge,
   e.stde,
-  sl.meanlogDensity300
+  sl.severity_100,
+  sl.logDensity_100,
+  sl.count_100,
+  sl.severity_300,
+  sl.logDensity_300,
+  sl.count_300,
+  sl.severity_1000,
+  sl.logDensity_1000,
+  sl.count_1000
 FROM meta AS m
 LEFT JOIN elevation_dem AS e
   ON m.uid = e.uid
-LEFT JOIN spat_lag300 AS sl
+LEFT JOIN spat_lag AS sl
   ON m.uid = sl.uid
 LEFT JOIN labels AS l
   ON m.uid = l.uid
@@ -118,11 +126,19 @@ SELECT
   e.dife,
   e.avge,
   e.stde,
-  sl.meanlogDensity300
+  sl.severity_100,
+  sl.logDensity_100,
+  sl.count_100,
+  sl.severity_300,
+  sl.logDensity_300,
+  sl.count_300,
+  sl.severity_1000,
+  sl.logDensity_1000,
+  sl.count_1000
 FROM meta AS m
 LEFT JOIN elevation_dem AS e
   ON m.uid = e.uid
-LEFT JOIN spat_lag300 AS sl
+LEFT JOIN spat_lag AS sl
   ON m.uid = sl.uid
 LEFT JOIN format AS l
   ON m.uid = l.uid

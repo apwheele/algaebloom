@@ -19,6 +19,7 @@ I saved the final built versions via `pip list > final_env.txt`, which is also u
 I have saved the final files I used in the competition as CSV files in the `./data` folder. These include:
 
  - `elevation_dem.csv`, data obtained from Planetary computers DEM source, see `get_dem.py`
+ - `spat_lag.csv`, spatial lags in space/time (only from input data), see `get_lag.py`
  - ??????? image data ??????????
  - ??????? weather data ????????
 

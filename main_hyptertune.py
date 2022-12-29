@@ -42,6 +42,11 @@ ele_cats = {'max_dif':['maxe','dife'],
 
 ele_keys = tuple(ele_cats.keys())
 
+
+# Spatial Lag Variables
+
+
+
 ##############################################
 
 
