@@ -44,8 +44,23 @@ ele_keys = tuple(ele_cats.keys())
 
 
 # Spatial Lag Variables
+sl_cats = {'lag100': ['severity_100','logDensity_100','count_100'],
+           'lag300': ['severity_300','logDensity_300','count_300'],
+           'lag1000': ['severity_1000','logDensity_1000','count_1000'],
+           'lagNone': []}
 
+sl_keys = tuple(sl_cats.keys())
 
+# Sat imagery data
+sat_cats = {'satNone': [],
+            'sat500': ['imtype','prop_lake_500','r_500','g_500','b_500'],
+            'sat1000': ['imtype','prop_lake_1000','r_1000','g_1000','b_1000'],
+            'sat2500': ['imtype','prop_lake_2500','r_2500','g_2500','b_2500'],
+            'sat500_1000': ['imtype','prop_lake_500','r_500','g_500','b_500', 'prop_lake_1000','r_1000','g_1000','b_1000'],
+            'sat500_2500': ['imtype','prop_lake_500','r_500','g_500','b_500', 'prop_lake_2500','r_2500','g_2500','b_2500'],
+            'sat1000_2500': ['imtype','prop_lake_1000','r_1000','g_1000','b_1000', 'prop_lake_2500','r_2500','g_2500','b_2500']}
+
+sat_keys = tuple(sat_cats.keys())
 
 ##############################################
 
@@ -59,13 +74,19 @@ def objective_lgb(trial):
         "max_depth": trial.suggest_int("max_depth", 2, 10),
         "ele_set": trial.suggest_categorical("ele_vars", ele_keys),
         "xy_set": trial.suggest_categorical("xy_set", xy_keys),
+        "sl_set": trial.suggest_categorical("sl_set", sl_keys),
         "reg_set": trial.suggest_categorical("reg_set", reg_keys),
         "weight": trial.suggest_categorical("weight", weight_cats),
-        "cat_type": trial.suggest_categorical("cat_type", cat_cats)
+        "cat_type": trial.suggest_categorical("cat_type", cat_cats),
+        "sat_set": trial.suggest_categorical("sat_set", sat_keys),
     }
     # Setting the different variables
     ov = region_cats[param['reg_set']]
+    #if 'imtype' in sat_cats[param['sat_set']]:
+    #    ov.append('imtype')
     cv = ele_cats[param['ele_set']] + xy_cats[param['xy_set']]
+    cv += sl_cats[param['sl_set']]
+    cv += sat_cats[param['sat_set']]
     rm = mod.RegMod(ord_vars=ov,
                     dum_vars=None,
                     dat_vars=['date'],
@@ -78,7 +99,7 @@ def objective_lgb(trial):
     return avg_rmse
 
 study_lgb = optuna.create_study(direction="minimize")
-study_lgb.optimize(objective_lgb, n_trials=150)
+study_lgb.optimize(objective_lgb, n_trials=150) # 150
 trial_lgb = study_lgb.best_trial
 res_results['lgb'] = trial_lgb
 
@@ -100,12 +121,18 @@ def objective_xgb(trial):
         "max_depth": trial.suggest_int("max_depth", 2, 10),
         "ele_set": trial.suggest_categorical("ele_vars", ele_keys),
         "xy_set": trial.suggest_categorical("xy_set", xy_keys),
+        "sl_set": trial.suggest_categorical("sl_set", sl_keys),
         "reg_set": trial.suggest_categorical("reg_set", reg_keys),
-        "weight": trial.suggest_categorical("weight", weight_cats)
+        "weight": trial.suggest_categorical("weight", weight_cats),
+        "sat_set": trial.suggest_categorical("sat_set", sat_keys),
     }
     # Setting the different variables
     ov = region_cats[param['reg_set']]
+    #if 'imtype' in sat_cats[param['sat_set']]:
+    #    ov.append('imtype')
     cv = ele_cats[param['ele_set']] + xy_cats[param['xy_set']]
+    cv += sl_cats[param['sl_set']]
+    cv += sat_cats[param['sat_set']]
     rm = mod.RegMod(ord_vars=ov,
                     dum_vars=None,
                     dat_vars=['date'],
@@ -140,13 +167,19 @@ def objective_cat(trial):
         "max_depth": trial.suggest_int("max_depth", 2, 10),
         "ele_set": trial.suggest_categorical("ele_vars", ele_keys),
         "xy_set": trial.suggest_categorical("xy_set", xy_keys),
+        "sl_set": trial.suggest_categorical("sl_set", sl_keys),
         "reg_set": trial.suggest_categorical("reg_set", reg_keys),
         "weight": trial.suggest_categorical("weight", weight_cats),
-        "cat_type": trial.suggest_categorical("cat_type", cat_cats)
+        "cat_type": trial.suggest_categorical("cat_type", cat_cats),
+        "sat_set": trial.suggest_categorical("sat_set", sat_keys),
     }
     # Setting the different variables
     ov = region_cats[param['reg_set']]
+    #if 'imtype' in sat_cats[param['sat_set']]:
+    #    ov.append('imtype')
     cv = ele_cats[param['ele_set']] + xy_cats[param['xy_set']]
+    cv += sl_cats[param['sl_set']]
+    cv += sat_cats[param['sat_set']]
     rm = mod.RegMod(ord_vars=ov,
                     dum_vars=None,
                     dat_vars=['date'],

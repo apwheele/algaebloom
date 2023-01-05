@@ -13,34 +13,80 @@ train_dat = feat.get_data(split_pred=True)
 ###################################
 # Example just predicting severity directly
 
-#cv2 = ['latitude','longitude'] # these appear to overfit quite a bit
-cv2 = ['latitude','longitude','elevation','stde'] #['maxe','dife']
+lat_lon = ['latitude','longitude'] # these appear to overfit quite a bit
+cv2 = ['elevation','dife'] #'maxe','stde']
+sat_vars = ['prop_lake_2500', 'r_2500', 'g_2500', 'b_2500', 'prop_lake_1000', 'r_1000', 'g_1000', 'b_1000']
+#sat_vars = ['prop_lake_500', 'r_500', 'g_500', 'b_500']
+cv2 += sat_vars
+cv2 += lat_lon
 #cv2 = ['meanlogDensity300']
 
-ov = ['region'] #'cluster'
+# reset to missing
+#train_mis = train_dat.copy()
+#for v in sat_vars:
+#    train_dat[v].replace({-1: mod.np.NAN}, inplace=True)
+
+ov = ['region','cluster']
 
 # RandomForestRegressor(n_estimators=500, max_depth=5, min_samples_split=20)
 # CatBoostRegressor(iterations=500,depth=5,allow_writing_files=False,verbose=False)
-# LGBMRegressor(iterations=500,max_depth=5)
+# LGBMRegressor(n_estimators=500,max_depth=5)
 # XGBRegressor(n_estimators=500, max_depth=5)
 
-#{'n_estimators': 550, 'max_depth': 9, 'ele_vars': 'ele_std', 'xy_set': 'both', 'reg_set': 'reg', 'weight': False, 'cat_type': False}
+#Best Average RMSE cat 0.7505640632697526
+#Best Params
+#{'n_estimators': 500, 'max_depth': 9, 'ele_vars': 'all_var', 'xy_set': 'both', 'sl_set': 'lag1000', 'reg_set': 'both', 'weight': True, 'cat_type': False, 'sat_set': 'sat500'}
 
-rm = mod.RegMod(ord_vars=ov,
+# Prediction 15, 1/1/2023, LightBoost [n_estimators=400, max_depth=8, cat_vars=True, +weights, +missing data], uses month/weekday/days + region/cluster/latlon + elevation vars ('elevation','dife') + sat(1000/2500). Score 0.8190 [Weighted Valid 0.792]
+# Prediction 4, 12/21/2022, XGBoost [n_estimators=100, max_depth=3], uses month/weekday/days + region/cluster. Score 0.7870 [Insample Validation 0.7903]
+# Prediction 8, 12/25/2022, Catboost [n_estimators=500, max_depth=5], uses month/weekday/days + region/cluster/lat/lon + elevation vars ('maxe','dife'). Score .8152 [Weighted Valid 0.8015]
+# Prediction 17, Ensemble [Catboost 12/25/22, LightBoost 1/1/23, XGBoost 12/21/22]
+
+cat = mod.RegMod(ord_vars=['region','cluster'],
                 dum_vars=None,
                 dat_vars=['date'],
-                ide_vars=cv2,
+                ide_vars=['latitude','longitude','maxe','dife'],
                 weight = 'split_pred',
                 y='severity',
-                mod = mod.CatBoostRegressor(n_estimators=550,
-                                              max_depth=9,
-                                              allow_writing_files=False,
-                                              verbose=False)
+                mod = mod.CatBoostRegressor(iterations=500,depth=5,
+                   allow_writing_files=False,verbose=False)
                 )
+cat.fit(train_dat,weight=False,cat=False)
+
+lig = mod.RegMod(ord_vars=['region','cluster'],
+                dum_vars=None,
+                dat_vars=['date'],
+                ide_vars=['latitude','longitude','elevation','dife',
+                          'prop_lake_2500', 'r_2500', 'g_2500', 'b_2500', 
+                          'prop_lake_1000', 'r_1000', 'g_1000', 'b_1000'],
+                weight = 'split_pred',
+                y='severity',
+                mod = mod.LGBMRegressor(n_estimators=400,max_depth=8)
+                )
+lig.fit(train_dat,weight=True,cat=True)
+
+xgb = mod.RegMod(ord_vars=['region','cluster'],
+                 dat_vars=['date'],
+                 y='severity',
+                 mod = mod.XGBRegressor(n_estimators=100, max_depth=3))
+xgb.fit(train_dat,weight=False,cat=False)
+
+
+rm = mod.EnsMod(mods={'xgb': xgb, 'cat': cat, 'lig': lig})
 
 
 
-rm.met_eval(train_dat,pr=True,ret=True,weight=False,cat=False,full_train=True)
+#rm = mod.RegMod(ord_vars=ov,
+#                dum_vars=None,
+#                dat_vars=['date'],
+#                ide_vars=cv2,
+#                weight = 'split_pred',
+#                y='severity',
+#                mod = mod.CatBoostRegressor(iterations=500,depth=5,
+#                   allow_writing_files=False,verbose=False)
+#                )
+
+#rm.met_eval(train_dat,pr=True,ret=True,weight=True,cat=False,full_train=True)
 
 # Now getting files for out of sample data
 test = feat.get_data(data_type='test')

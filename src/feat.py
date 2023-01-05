@@ -9,25 +9,17 @@ def today_str():
     return now.strftime('%Y_%m_%d')
 
 
-#weath_vars = ['tavg','tmin','tmax','prcp','wpsd','pres','tsun']
-
-#for w in weath_vars:
-#    subw = train_dat[w] == -1
-#    sub_data = train_dat[~subw].copy()
-#    print(sub_data[['logDensity',w]].corr())
-
-
-# 'tavg','tmin','tmax','prcp','wpsd','pres','tsun'
-#cont_vars = ['sqrtSQKM','latitude','longitude','tavg','tmin','tmax','prcp','wpsd','pres','tsun','elevation']
-#dum_vars = ['FCODE','region']
-#dat_vars = ['date']
-
 # ordinal encoding for region
 def org_reg(data,rstr='region'):
     data[rstr] = data[rstr].replace({'west':4,
                                      'midwest':3,
                                      'south':2,
                                      'northeast':1})
+
+def ord_imtype(data,imstr='imtype'):
+    rep_di = {'land_sat':0,
+              'sentinel':1}
+    data[imstr] = data[imstr].fillna(-1).replace(rep_di)
 
 def safesqrt(values):
     return np.sqrt(values.clip(0))
@@ -97,21 +89,32 @@ SELECT
   sl.count_300,
   sl.severity_1000,
   sl.logDensity_1000,
-  sl.count_1000
+  sl.count_1000,
+  st.imtype,
+  st.prop_lake_500,
+  st.r_500,
+  st.g_500,
+  st.b_500,
+  st.prop_lake_1000,
+  st.r_1000,
+  st.g_1000,
+  st.b_1000,
+  st.prop_lake_2500,
+  st.r_2500,
+  st.g_2500,
+  st.b_2500
 FROM meta AS m
 LEFT JOIN elevation_dem AS e
   ON m.uid = e.uid
 LEFT JOIN spat_lag AS sl
   ON m.uid = sl.uid
+LEFT JOIN sat AS st
+  ON m.uid = st.uid
 LEFT JOIN labels AS l
   ON m.uid = l.uid
 WHERE
   m.split = 'train'
 """
-
-#, sp.pred AS pred_split
-# LEFT JOIN split_pred AS sp
-#  ON m.uid = sp.uid
 
 test_query = """
 SELECT 
@@ -134,12 +137,27 @@ SELECT
   sl.count_300,
   sl.severity_1000,
   sl.logDensity_1000,
-  sl.count_1000
+  sl.count_1000,
+  st.imtype,
+  st.prop_lake_500,
+  st.r_500,
+  st.g_500,
+  st.b_500,
+  st.prop_lake_1000,
+  st.r_1000,
+  st.g_1000,
+  st.b_1000,
+  st.prop_lake_2500,
+  st.r_2500,
+  st.g_2500,
+  st.b_2500
 FROM meta AS m
 LEFT JOIN elevation_dem AS e
   ON m.uid = e.uid
 LEFT JOIN spat_lag AS sl
   ON m.uid = sl.uid
+LEFT JOIN sat AS st
+  ON m.uid = st.uid
 LEFT JOIN format AS l
   ON m.uid = l.uid
 WHERE
@@ -170,6 +188,8 @@ def get_data(data_type='train',db_str=db,split_pred=False):
         sql = test_query
     dat = pd.read_sql(sql,con=db_con)
     org_reg(dat) # Region ordinal encode
+    ord_imtype(dat) # image type landsat/sentinel
+    #dat = dat.fillna(-1) # missing a bit of sat data
     dat['cluster'] = dat[['latitude','longitude']].apply(cluster,axis=1)
     if data_type == 'train':
         dat['logDensity'] = safelog(dat['density'])

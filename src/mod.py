@@ -453,9 +453,9 @@ class EnsMod():
     def __init__(self, mods, av_func = 'mean'):
         self.mods = mods #should be dict
         self.av_func = av_func
-    def fit(self,X,sample_weight=None):
+    def fit(self,X,weight=True,cat=True):
         for key,mod in self.mods.items():
-            mod.fit(X,sample_weight=sample_weight)
+            mod.fit(X,weight=weight,cat=cat)
     def predict(self,X):
         res = []
         for key,mod in self.mods.items():
