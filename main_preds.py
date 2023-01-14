@@ -42,6 +42,12 @@ ov = ['region','cluster']
 # Prediction 8, 12/25/2022, Catboost [n_estimators=500, max_depth=5], uses month/weekday/days + region/cluster/lat/lon + elevation vars ('maxe','dife'). Score .8152 [Weighted Valid 0.8015]
 # Prediction 17, Ensemble [Catboost 12/25/22, LightBoost 1/1/23, XGBoost 12/21/22]
 
+sat_500 = ['prop_lake_500', 'r_500', 'g_500', 'b_500']
+sat_1000 = ['prop_lake_1000', 'r_1000', 'g_1000', 'b_1000']
+sat_2500 = ['prop_lake_2500', 'r_2500', 'g_2500', 'b_2500']
+sat_1025 = ['prop_lake_2500', 'r_2500', 'g_2500', 'b_2500', 
+           'prop_lake_1000', 'r_1000', 'g_1000', 'b_1000']
+
 cat = mod.RegMod(ord_vars=['region','cluster'],
                 dum_vars=None,
                 dat_vars=['date'],
@@ -53,17 +59,17 @@ cat = mod.RegMod(ord_vars=['region','cluster'],
                 )
 cat.fit(train_dat,weight=False,cat=False)
 
-lig = mod.RegMod(ord_vars=['region','cluster'],
+
+lig = mod.RegMod(ord_vars=['region','cluster','imtype'],
                 dum_vars=None,
                 dat_vars=['date'],
-                ide_vars=['latitude','longitude','elevation','dife',
-                          'prop_lake_2500', 'r_2500', 'g_2500', 'b_2500', 
-                          'prop_lake_1000', 'r_1000', 'g_1000', 'b_1000'],
+                ide_vars=['latitude','longitude','elevation','dife'] + sat_1025,
                 weight = 'split_pred',
                 y='severity',
                 mod = mod.LGBMRegressor(n_estimators=400,max_depth=8)
                 )
-lig.fit(train_dat,weight=True,cat=True)
+lig.fit(train_dat,weight=False,cat=True)
+
 
 xgb = mod.RegMod(ord_vars=['region','cluster'],
                  dat_vars=['date'],

@@ -52,8 +52,7 @@ sl_cats = {'lag100': ['severity_100','logDensity_100','count_100'],
 sl_keys = tuple(sl_cats.keys())
 
 # Sat imagery data
-sat_cats = {'satNone': [],
-            'sat500': ['imtype','prop_lake_500','r_500','g_500','b_500'],
+sat_cats = {'sat500': ['imtype','prop_lake_500','r_500','g_500','b_500'],
             'sat1000': ['imtype','prop_lake_1000','r_1000','g_1000','b_1000'],
             'sat2500': ['imtype','prop_lake_2500','r_2500','g_2500','b_2500'],
             'sat500_1000': ['imtype','prop_lake_500','r_500','g_500','b_500', 'prop_lake_1000','r_1000','g_1000','b_1000'],
@@ -99,7 +98,7 @@ def objective_lgb(trial):
     return avg_rmse
 
 study_lgb = optuna.create_study(direction="minimize")
-study_lgb.optimize(objective_lgb, n_trials=150) # 150
+study_lgb.optimize(objective_lgb, n_trials=300) # 150
 trial_lgb = study_lgb.best_trial
 res_results['lgb'] = trial_lgb
 
@@ -146,7 +145,7 @@ def objective_xgb(trial):
     return avg_rmse
 
 study_xgb = optuna.create_study(direction="minimize")
-study_xgb.optimize(objective_xgb, n_trials=100)
+study_xgb.optimize(objective_xgb, n_trials=300)
 trial_xgb = study_xgb.best_trial
 res_results['xgb'] = trial_xgb
 
@@ -195,7 +194,7 @@ def objective_cat(trial):
     return avg_rmse
 
 study_cat = optuna.create_study(direction="minimize")
-study_cat.optimize(objective_cat, n_trials=150)
+study_cat.optimize(objective_cat, n_trials=300)
 trial_cat = study_cat.best_trial
 res_results['cat'] = trial_cat
 

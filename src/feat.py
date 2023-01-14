@@ -189,7 +189,7 @@ def get_data(data_type='train',db_str=db,split_pred=False):
     dat = pd.read_sql(sql,con=db_con)
     org_reg(dat) # Region ordinal encode
     ord_imtype(dat) # image type landsat/sentinel
-    #dat = dat.fillna(-1) # missing a bit of sat data
+    dat = dat.fillna(-1) # missing a bit of sat data
     dat['cluster'] = dat[['latitude','longitude']].apply(cluster,axis=1)
     if data_type == 'train':
         dat['logDensity'] = safelog(dat['density'])

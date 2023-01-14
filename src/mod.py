@@ -321,6 +321,7 @@ class RegMod():
             sw = X[self.weight]
         else:
             sw = None
+            print('NOT using Weights in fit')
         y_dat = X[self.y].copy()
         if self.transform:
             y_dat = self.transform(y_dat)
@@ -339,7 +340,7 @@ class RegMod():
             self.fit_cat = True
             for v in self.cat_vars:
                 X_dat[v] = X_dat[v].astype('category')
-            self.mod.fit(X_dat, y_dat)
+            self.mod.fit(X_dat, y_dat, sample_weight=sw)
         else:
             self.mod.fit(X_dat,y_dat,sample_weight=sw)
         pred = self.mod.predict(X_dat)
