@@ -54,7 +54,7 @@ cat = mod.RegMod(ord_vars=['region','cluster'],
                 ide_vars=['latitude','longitude','maxe','dife'],
                 weight = 'split_pred',
                 y='severity',
-                mod = mod.CatBoostRegressor(iterations=500,depth=5,
+                mod = mod.CatBoostRegressor(iterations=500,depth=6,
                    allow_writing_files=False,verbose=False)
                 )
 cat.fit(train_dat,weight=False,cat=False)
@@ -66,7 +66,7 @@ lig = mod.RegMod(ord_vars=['region','cluster','imtype'],
                 ide_vars=['latitude','longitude','elevation','dife'] + sat_1025,
                 weight = 'split_pred',
                 y='severity',
-                mod = mod.LGBMRegressor(n_estimators=400,max_depth=8)
+                mod = mod.LGBMRegressor(n_estimators=500,max_depth=8)
                 )
 lig.fit(train_dat,weight=False,cat=True)
 

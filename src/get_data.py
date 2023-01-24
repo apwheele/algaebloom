@@ -29,7 +29,7 @@ db_con = sqlite3.connect(db)
 def cv2_norm(matrix):
     amin = matrix.min()
     amax = matrix.max()
-    modif = max/(amax - amin)
+    modif = amax/(amax - amin)
     shift_mat = np.round((matrix - amin)*modif)
     return shift_mat.astype(int)
 
@@ -279,7 +279,7 @@ def crop_sentinel_image(item, bounding_box):
         crs="EPSG:4326",
     )
     # Should I return X/Y as well?
-    return image.to_numpy()
+    return cv2_norm(image.to_numpy())
 
 
 def crop_landsat_image(item, bounding_box):
