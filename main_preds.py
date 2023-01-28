@@ -54,7 +54,7 @@ cat = mod.RegMod(ord_vars=['region','cluster'],
                 ide_vars=['latitude','longitude','maxe','dife'],
                 weight = 'split_pred',
                 y='severity',
-                mod = mod.CatBoostRegressor(iterations=500,depth=6,
+                mod = mod.CatBoostRegressor(iterations=450,depth=6,
                    allow_writing_files=False,verbose=False)
                 )
 cat.fit(train_dat,weight=False,cat=False)
@@ -100,8 +100,24 @@ test['pred'] = rm.predict_int(test)
 
 form_dat = feat.sub_format(test)
 print(form_dat['severity'].value_counts())
-form_dat.to_csv(f'sub_{today}.csv',index=False)
 
-# Saving the model
+
+# function to check if similar to any past submissions
+def check_similar(current):
+    import os
+    import pandas as pd
+    import numpy as np
+    files = os.listdir("./submissions")
+    for fi in files:
+        old = pd.read_csv(f"./submissions/{fi}")
+        dif = np.abs(current['severity'] - old['severity']).sum()
+        if dif == 0:
+            print(f'Date {fi} same as current')
+
+check_similar(form_dat)
+
+
+# Saving the data and model
+form_dat.to_csv(f'sub_{today}.csv',index=False)
 mod.save_model(rm,f'mod_{today}')
 ###################################
