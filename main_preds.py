@@ -54,7 +54,7 @@ cat = mod.RegMod(ord_vars=['region','cluster'],
                 ide_vars=['latitude','longitude','maxe','dife'],
                 weight = 'split_pred',
                 y='severity',
-                mod = mod.CatBoostRegressor(iterations=450,depth=6,
+                mod = mod.CatBoostRegressor(iterations=400,depth=6,
                    allow_writing_files=False,verbose=False)
                 )
 cat.fit(train_dat,weight=False,cat=False)
