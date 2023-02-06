@@ -45,7 +45,7 @@ lig.fit(train_dat,weight=False,cat=True)
 xgb = mod.RegMod(ord_vars=['region','cluster'],
                  dat_vars=['date'],
                  y='severity',
-                 mod = mod.XGBRegressor(n_estimators=100, max_depth=3))
+                 mod = mod.XGBRegressor(n_estimators=100, max_depth=2))
 xgb.fit(train_dat,weight=False,cat=False)
 
 
@@ -74,19 +74,12 @@ print(form_dat['severity'].value_counts())
 
 
 # function to check if similar to any past submissions
-def check_similar(current):
-    import os
-    import pandas as pd
-    import numpy as np
-    files = os.listdir("./submissions")
-    for fi in files:
-        old = pd.read_csv(f"./submissions/{fi}")
-        dif = np.abs(current['severity'] - old['severity']).sum()
-        if dif == 0:
-            print(f'Date {fi} same as current')
+mod.check_similar(form_dat)
 
-check_similar(form_dat)
-
+# Checking to see differences compared to best submission so far
+current = form_dat.copy()
+mod.check_day(current,day="sub_2023_01_31.csv")
+current.groupby('region',as_index=False)['dif_2023_01_31'].value_counts()
 
 # Saving the data and model
 form_dat.to_csv(f'sub_{today}.csv',index=False)

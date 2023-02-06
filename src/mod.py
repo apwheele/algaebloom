@@ -6,6 +6,7 @@ Model function helpers
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder, MinMaxScaler
 import numpy as np
+import os
 import pandas as pd
 import pickle
 from xgboost import XGBRegressor
@@ -321,7 +322,7 @@ class RegMod():
             sw = X[self.weight]
         else:
             sw = None
-            print('NOT using Weights in fit')
+            #print('NOT using Weights in fit')
         y_dat = X[self.y].copy()
         if self.transform:
             y_dat = self.transform(y_dat)
@@ -507,3 +508,20 @@ def load_model(name):
     mod = pickle.load(infile)
     infile.close()
     return mod
+
+
+# function to check if similar to any past submissions
+def check_similar(current):
+    files = os.listdir("./submissions")
+    for fi in files:
+        old = pd.read_csv(f"./submissions/{fi}")
+        dif = np.abs(current['severity'] - old['severity']).sum()
+        if dif == 0:
+            print(f'Date {fi} same as current')
+
+
+def check_day(current,day="sub_2023_01_31.csv"):
+    old = pd.read_csv(fr"./submissions/{day}")
+    dstr = f'dif_{day[4:-4]}'
+    current[dstr] = old['severity'] - current['severity']
+    print(current[dstr].value_counts())
