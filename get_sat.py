@@ -10,7 +10,7 @@ from sklearn.cluster import KMeans
 
 from datetime import datetime, timedelta
 import pandas as pd
-import cv2
+#import cv2
 import odc.stac
 
 # Establish a connection to the STAC API
@@ -77,7 +77,7 @@ def get_image(data, meter_buffer=1000):
         im_type = 'sentinel'
     else:
         #print('Grabbing LandSat image')
-        sd = data[data['platform'] == 'landsat-7']
+        sd = data[data['platform'] == 'landsat-8']
         item = sd['item_obj'].tolist()[0]
         cf = get_data.crop_landsat_image(item,bbox)
         im_type = 'land_sat'
@@ -93,7 +93,7 @@ def k_mean_image(image_np,k=2, seed=10):
     black = im_df.sum(axis=1)
     im_df = im_df[black > 0].reset_index(drop=True)
     # k-means cluster
-    kmeans = KMeans(n_clusters=k, random_state=seed, n_init="auto")
+    kmeans = KMeans(n_clusters=k, random_state=seed)
     kmeans.fit(im_df)
     # figure out cluster that is the most blue
     lab_blue = np.argmax(kmeans.cluster_centers_[:,2])
@@ -157,9 +157,9 @@ def loop_image_data(data,con=get_data.db_con,table_name='sat'):
 #get_data.drop_table('sat')
 
 meta = pd.read_csv('./data/metadata.csv')
-res_df = loop_image_data(meta)
+res_df = loop_image_data(meta) # meta.sample(100) # to check
 print(res_df.shape)
-res_df.to_csv('./data/sat_stats.csv')
+res_df.to_csv('./data/sat_stats.csv',index=False)
 
 
 
