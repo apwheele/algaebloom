@@ -13,7 +13,7 @@ res_results = {}
 train_dat = feat.get_data(split_pred=True)
 
 # Model fit with weights
-weight_cats = (True,False)
+weight_cats = tuple([False])
 
 # Model fit with categorical variables
 cat_cats = (True,False)
@@ -44,9 +44,9 @@ ele_keys = tuple(ele_cats.keys())
 
 
 # Spatial Lag Variables
-sl_cats = {'lag100': ['severity_100','logDensity_100','count_100'],
-           'lag300': ['severity_300','logDensity_300','count_300'],
-           'lag1000': ['severity_1000','logDensity_1000','count_1000'],
+sl_cats = {#'lag100': ['severity_100','logDensity_100','count_100'],
+           #'lag300': ['severity_300','logDensity_300','count_300'],
+           #'lag1000': ['severity_1000','logDensity_1000','count_1000'],
            'lagNone': []}
 
 sl_keys = tuple(sl_cats.keys())

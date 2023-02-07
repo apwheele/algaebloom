@@ -180,12 +180,14 @@ def get_both(db_str=db,split_pred=False):
     res_df = pd.concat([r1,r2],axis=0)
     return res_df.reset_index(drop=True)
 
-def get_data(data_type='train',db_str=db,split_pred=False):
+def get_data(data_type='train',db_str=db,split_pred=False,old_sat=True):
     db_con = sqlite3.connect(db_str)
     if data_type == 'train':
         sql = train_query
     elif data_type == 'test':
         sql = test_query
+    if old_sat:
+        sql = sql.replace("LEFT JOIN sat AS st","LEFT JOIN sat_oldLS7 AS st")
     dat = pd.read_sql(sql,con=db_con)
     org_reg(dat) # Region ordinal encode
     ord_imtype(dat) # image type landsat/sentinel
