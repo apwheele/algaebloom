@@ -374,13 +374,13 @@ class RegMod():
         res_df['FI'] = res_df['FI']/res_df['FI'].sum()
         return res_df
     def met_eval(self, data, weight=True, cat=True, full_train=False,
-                 split='weighted', test_size=2000, test_splits=10, 
+                 split_tt='weighted', test_size=2000, test_splits=10, 
                  ret=False, pr=False):
         dc = data.copy()
         seeds = np.random.randint(1,1e6,test_splits)
         metrics = []
         for s in seeds:
-            if split == 'weighted':
+            if split_tt == 'weighted':
                 if self.weight is not None:
                     wv = self.weight
                 else:

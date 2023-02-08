@@ -1,3 +1,8 @@
+'''
+This more easily generates features
+based on prepared sqlite db
+for testing purposes
+'''
 
 import pandas as pd
 import numpy as np
@@ -9,17 +14,28 @@ def today_str():
     return now.strftime('%Y_%m_%d')
 
 
+reg_ord = {'west':4,
+           'midwest':3,
+           'south':2,
+           'northeast':1}
+
 # ordinal encoding for region
 def org_reg(data,rstr='region'):
-    data[rstr] = data[rstr].replace({'west':4,
-                                     'midwest':3,
-                                     'south':2,
-                                     'northeast':1})
+    data[rstr] = data[rstr].replace(reg_ord)
 
 def ord_imtype(data,imstr='imtype'):
     rep_di = {'land_sat':0,
               'sentinel':1}
     data[imstr] = data[imstr].fillna(-1).replace(rep_di)
+
+
+def filter_landsat(data):
+    im_vars = ['prop_lake_500', 'r_500', 'g_500', 'b_500']
+    im_vars += ['prop_lake_1000', 'r_1000', 'g_1000', 'b_1000']
+    im_vars += ['prop_lake_2500', 'r_2500', 'g_2500', 'b_2500']
+    im_vars += ['imtype']
+    landsat = data['imtype'] == 0
+    data.loc[landsat,im_vars] = -1
 
 def safesqrt(values):
     return np.sqrt(values.clip(0))
@@ -180,17 +196,16 @@ def get_both(db_str=db,split_pred=False):
     res_df = pd.concat([r1,r2],axis=0)
     return res_df.reset_index(drop=True)
 
-def get_data(data_type='train',db_str=db,split_pred=False,old_sat=True):
+def get_data(data_type='train',db_str=db,split_pred=False):
     db_con = sqlite3.connect(db_str)
     if data_type == 'train':
         sql = train_query
     elif data_type == 'test':
         sql = test_query
-    if old_sat:
-        sql = sql.replace("LEFT JOIN sat AS st","LEFT JOIN sat_oldLS7 AS st")
     dat = pd.read_sql(sql,con=db_con)
     org_reg(dat) # Region ordinal encode
     ord_imtype(dat) # image type landsat/sentinel
+    filter_landsat(dat) # filtering mistake landsat-7 info
     dat = dat.fillna(-1) # missing a bit of sat data
     dat['cluster'] = dat[['latitude','longitude']].apply(cluster,axis=1)
     if data_type == 'train':

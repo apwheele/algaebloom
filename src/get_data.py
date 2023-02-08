@@ -15,7 +15,7 @@ from math import sin, cos, tan, acos, atan, atan2, radians, sqrt, pi
 import rioxarray
 import planetary_computer as pc
 import geopy.distance as distance
-import odc
+import odc.stac
 #import cv2
 
 
