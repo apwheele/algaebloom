@@ -41,25 +41,12 @@ lig.fit(train_dat,weight=False,cat=True)
 xgb = mod.RegMod(ord_vars=['region','cluster'],
                  dat_vars=['date'],
                  y='severity',
-                 mod = mod.XGBRegressor(n_estimators=50, max_depth=2))
+                 mod = mod.XGBRegressor(n_estimators=75, max_depth=2))
 xgb.fit(train_dat,weight=False,cat=False)
 
 
 rm = mod.EnsMod(mods={'xgb': xgb, 'cat': cat, 'lig': lig})
 
-
-
-#rm = mod.RegMod(ord_vars=ov,
-#                dum_vars=None,
-#                dat_vars=['date'],
-#                ide_vars=cv2,
-#                weight = 'split_pred',
-#                y='severity',
-#                mod = mod.CatBoostRegressor(iterations=500,depth=5,
-#                   allow_writing_files=False,verbose=False)
-#                )
-
-#rm.met_eval(train_dat,pr=True,ret=True,weight=True,cat=False,full_train=True)
 
 # Now getting files for out of sample data
 test = feat.get_data(data_type='test')

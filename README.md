@@ -64,7 +64,7 @@ To run the final model, you can do:
 
 This will save a model in the `./models` folder with the current date. You should get a print out showing how it is the same as the final winning solution (which I have saved in the repo), submission `./submissions/sub_2023_02_07.csv`.
 
-## Modelling Notes
+## Modeling Notes
 
 In addition to this, I have in the root folder `main_hypertune.py`, hypertuning experiments. And these results are saved in `hypertune_results.txt` (e.g. by running `python main_hypertune.py > hypertune_results.txt`. These helped guided the final models that I experiemented with, but the final ones are due to more idiosyncratic experimentation uploading every day.
 
