@@ -89,6 +89,9 @@ def add_meta_data(con=db_con):
             ret_dat[n] = d
     return ret_dat
 
+# Just to make sure those tables are populated
+meta_data = add_meta_data()
+
 ###########################################################################################
 # VINCENTY FORMULA FOR DISTANCE BETWEEN LAT/LON
 

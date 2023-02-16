@@ -24,10 +24,18 @@ def cat_search(lat,lon,date,time_buffer_days=30,collections=["sentinel-2-l2a","l
     dr = get_data.get_date_range(date,time_buffer_days)
     bbox = get_data.get_bounding_box(lat,lon,meter_buffer=meter_buffer)
     # limits cloud cover to images less than 5%
-    search = catalog.search(collections=collections,
-                            bbox=bbox,
-                            datetime=dr,
-                            query={"eo:cloud_cover": {"lt": 5}})
+    try:
+        search = catalog.search(collections=collections,
+                                bbox=bbox,
+                                datetime=dr,
+                                query={"eo:cloud_cover": {"lt": 5}})
+    except Exception:
+        # issues with time formatting
+        dr = dr.replace('T','')
+        search = catalog.search(collections=collections,
+                                bbox=bbox,
+                                datetime=dr,
+                                query={"eo:cloud_cover": {"lt": 5}})
     items = [item for item in search.get_all_items()]
     item_details = pd.DataFrame(
     [{
