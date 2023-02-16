@@ -71,9 +71,9 @@ def prep_sql(db=db):
     print('Resulting table names in sqlite')
     print(rt['name'].tolist())
 
-if __name__ == "main":
+if __name__ == "__main__":
     print('Executing script to prep data in sqlite')
-    print('This expects the csv files listed at front'
+    print('This expects the csv files listed at front')
     print('of script to be in the data folder')
     prep_sql()
 
