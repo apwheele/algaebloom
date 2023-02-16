@@ -33,7 +33,7 @@ lig = mod.RegMod(ord_vars=['region','cluster','imtype'],
                 dat_vars=['date'],
                 ide_vars=['latitude','longitude','elevation','dife'] + sat_1025,
                 y='severity',
-                mod = mod.LGBMRegressor(n_estimators=475,max_depth=8)
+                mod = mod.LGBMRegressor(n_estimators=480,max_depth=8)
                 )
 lig.fit(train_dat,weight=False,cat=True)
 
