@@ -60,8 +60,8 @@ mod.check_similar(form_dat)
 
 # Checking to see differences compared to best submission so far
 current = form_dat.copy()
-mod.check_day(current,day="sub_2023_02_15.csv")
-current.groupby('region',as_index=False)['dif_2023_02_15'].value_counts()
+mod.check_day(current,day="sub_2023_02_17.csv")
+current.groupby('region',as_index=False)['dif_2023_02_17'].value_counts()
 
 # Saving the data and model
 form_dat.to_csv(f'sub_{today}.csv',index=False)

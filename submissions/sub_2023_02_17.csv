@@ -2059,7 +2059,7 @@ ihht,northeast,1
 ihib,south,1
 ihrx,midwest,1
 ihwj,west,4
-ihxf,west,3
+ihxf,west,4
 ihyj,south,2
 ihzw,midwest,1
 iiby,northeast,2
@@ -2318,7 +2318,7 @@ jhvn,midwest,1
 jiay,west,4
 jibj,midwest,1
 jibo,south,2
-jifn,south,1
+jifn,south,2
 jilc,west,4
 jimc,west,4
 jiru,west,4
@@ -2537,7 +2537,7 @@ kgzi,midwest,3
 khaw,west,4
 khea,west,4
 kheb,midwest,2
-khfp,south,1
+khfp,south,2
 khik,midwest,2
 khil,west,4
 khio,west,4
@@ -6293,7 +6293,7 @@ zexd,west,4
 zeyf,midwest,2
 zfdx,south,1
 zfel,south,2
-zfet,west,4
+zfet,west,3
 zfqw,midwest,1
 zfry,west,4
 zfsj,west,4
