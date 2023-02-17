@@ -16,7 +16,5 @@ data.sqlite
 /src/__pycache__/*
 
 # Final model/predictions
-!/models/mod_2023_02_15.pkl
-!/submissions/sub_2023_02_15.csv
 !/models/mod_2023_02_17.pkl
 !/submissions/sub_2023_02_17.csv
