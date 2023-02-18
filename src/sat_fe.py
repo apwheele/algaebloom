@@ -84,6 +84,8 @@ def get_image(data, meter_buffer=1000):
         im_type = 'sentinel'
     else:
         #print('Grabbing LandSat image')
+        # If you want to change this to check 8, just change
+        # below to say "landsat-8" instead of "landsat-7"
         sd = data[data['platform'] == 'landsat-7']
         item = sd['item_obj'].tolist()[0]
         cf = get_data.crop_landsat_image(item,bbox)

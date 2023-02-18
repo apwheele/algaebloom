@@ -38,14 +38,14 @@ def get_features(lat,lon,date,region):
 #res = get_features(39.080319,-86.430867,'2018-05-14','midwest')
 #print(res)
 
-
-best_model = 'mod_2023_02_07'
-best_model = mod.load_model(best_model)
+# No default model, need to load in yourself
+#best_model = 'mod_2023_02_06'
+#best_model = mod.load_model(best_model)
 
 # Function to predict entirely out of sample
 # loads in the model object inside function
 # not super-efficient
-def pred_out(lat,lon,date,region,model=best_model):
+def pred_out(lat,lon,date,region,model):
     di = get_features(lat,lon,date,region)
     pdat = pd.DataFrame([di])
     pred = model.predict_int(pdat)
