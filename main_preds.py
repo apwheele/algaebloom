@@ -33,7 +33,7 @@ lig = mod.RegMod(ord_vars=['region','cluster','imtype'],
                 dat_vars=['date'],
                 ide_vars=['latitude','longitude','elevation','dife'] + sat_1025,
                 y='severity',
-                mod = mod.LGBMRegressor(n_estimators=480,max_depth=8)
+                mod = mod.LGBMRegressor(n_estimators=500,max_depth=8)
                 )
 lig.fit(train_dat,weight=False,cat=True)
 
@@ -41,7 +41,7 @@ lig.fit(train_dat,weight=False,cat=True)
 xgb = mod.RegMod(ord_vars=['region','cluster'],
                  dat_vars=['date'],
                  y='severity',
-                 mod = mod.XGBRegressor(n_estimators=70, max_depth=2))
+                 mod = mod.XGBRegressor(n_estimators=100, max_depth=2))
 xgb.fit(train_dat,weight=False,cat=False)
 
 
@@ -60,8 +60,8 @@ mod.check_similar(form_dat)
 
 # Checking to see differences compared to best submission so far
 current = form_dat.copy()
-mod.check_day(current,day="sub_2023_02_17.csv")
-current.groupby('region',as_index=False)['dif_2023_02_17'].value_counts()
+mod.check_day(current,day="sub_2023_02_06.csv")
+current.groupby('region',as_index=False)['dif_2023_02_06'].value_counts()
 
 # Saving the data and model
 form_dat.to_csv(f'sub_{today}.csv',index=False)

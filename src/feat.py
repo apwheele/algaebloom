@@ -30,12 +30,15 @@ def ord_imtype(data,imstr='imtype'):
 
 
 def filter_landsat(data):
-    im_vars = ['prop_lake_500', 'r_500', 'g_500', 'b_500']
-    im_vars += ['prop_lake_1000', 'r_1000', 'g_1000', 'b_1000']
-    im_vars += ['prop_lake_2500', 'r_2500', 'g_2500', 'b_2500']
-    im_vars += ['imtype']
-    landsat = data['imtype'] == 0
-    data.loc[landsat,im_vars] = -1
+    #im_vars = ['prop_lake_500', 'r_500', 'g_500', 'b_500']
+    #im_vars += ['prop_lake_1000', 'r_1000', 'g_1000', 'b_1000']
+    #im_vars += ['prop_lake_2500', 'r_2500', 'g_2500', 'b_2500']
+    #im_vars += ['imtype']
+    #landsat = data['imtype'] == 0
+    #data.loc[landsat,im_vars] = -1
+    rep_di = {'land_sat':0,
+              'sentinel':1}
+    data['imtype'] = data['imtype'].fillna(-1).replace(rep_di)
 
 def safesqrt(values):
     return np.sqrt(values.clip(0))
@@ -204,7 +207,8 @@ def get_data(data_type='train',db_str=db,split_pred=False):
         sql = test_query
     dat = pd.read_sql(sql,con=db_con)
     org_reg(dat) # Region ordinal encode
-    ord_imtype(dat) # image type landsat/sentinel
+    # Winning solution used landsat-7 data
+    #ord_imtype(dat) # image type landsat/sentinel
     filter_landsat(dat) # filtering mistake landsat-7 info
     dat = dat.fillna(-1) # missing a bit of sat data
     dat['cluster'] = dat[['latitude','longitude']].apply(cluster,axis=1)

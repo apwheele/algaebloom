@@ -18,3 +18,5 @@ data.sqlite
 # Final model/predictions
 !/models/mod_2023_02_17.pkl
 !/submissions/sub_2023_02_17.csv
+!/models/mod_2023_02_06.pkl
+!/submissions/sub_2023_02_06.csv
