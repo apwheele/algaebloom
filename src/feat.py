@@ -30,15 +30,15 @@ def ord_imtype(data,imstr='imtype'):
 
 
 def filter_landsat(data):
-    #im_vars = ['prop_lake_500', 'r_500', 'g_500', 'b_500']
-    #im_vars += ['prop_lake_1000', 'r_1000', 'g_1000', 'b_1000']
-    #im_vars += ['prop_lake_2500', 'r_2500', 'g_2500', 'b_2500']
-    #im_vars += ['imtype']
-    #landsat = data['imtype'] == 0
-    #data.loc[landsat,im_vars] = -1
     rep_di = {'land_sat':0,
               'sentinel':1}
     data['imtype'] = data['imtype'].fillna(-1).replace(rep_di)
+    im_vars = ['prop_lake_500', 'r_500', 'g_500', 'b_500']
+    im_vars += ['prop_lake_1000', 'r_1000', 'g_1000', 'b_1000']
+    im_vars += ['prop_lake_2500', 'r_2500', 'g_2500', 'b_2500']
+    im_vars += ['imtype']
+    landsat = data['imtype'] == 0
+    data.loc[landsat,im_vars] = -1
 
 def safesqrt(values):
     return np.sqrt(values.clip(0))
