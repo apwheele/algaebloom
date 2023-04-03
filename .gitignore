@@ -1,3 +1,6 @@
+# ignore credentials
+config.py
+
 # stuff in gitignore
 Notes.txt
 
