@@ -138,7 +138,9 @@ WHERE
 test_query = """
 SELECT 
   m.uid,
+  l.density,
   l.region,
+  l.severity,
   m.latitude,
   m.longitude,
   m.date,
@@ -177,7 +179,7 @@ LEFT JOIN spat_lag AS sl
   ON m.uid = sl.uid
 LEFT JOIN sat AS st
   ON m.uid = st.uid
-LEFT JOIN format AS l
+LEFT JOIN labels AS l
   ON m.uid = l.uid
 WHERE
   m.split = 'test'
@@ -227,6 +229,6 @@ def sub_format(data,pred='pred'):
     # smearing
     dp = data[[pred,'uid']].copy()
     dp[pred] = dp[pred].round().astype(int).clip(1,5)
-    mf = form.merge(dp,on='uid')
+    mf = form.merge(dp,on='uid', how='right')
     mf['severity'] = mf['pred']
     return mf[['uid','region','severity']]
